@@ -176,6 +176,9 @@ setup_node() {
     fi
   done
 
+  # Stop hello world
+  project=hello-world make stop-container
+
   # === Update docker-compose.yaml image version ===
   COMPOSE_FILE="$TARGET_DIR/deploy/docker-compose.yaml"
   if [ -f "$COMPOSE_FILE" ]; then
@@ -272,9 +275,10 @@ start_node() {
   else
     TARGET_DIR="$HOME/infernet-container-starter"
   fi
-  project=hello-world make stop-container
 
   cd "$TARGET_DIR" || { echo "Project folder not found!"; return; }
+  docker pull ritualnetwork/infernet-node:latest
+  
   docker compose -f "$TARGET_DIR/deploy/docker-compose.yaml" up --build -d
   echo "✅ Ritual node started."
   read -p "Press Enter to return to menu..."
