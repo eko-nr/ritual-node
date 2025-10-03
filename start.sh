@@ -180,7 +180,7 @@ setup_node() {
   echo "Shutting down hello world, please wait..."
   project=hello-world make stop-container
   # Tunggu sampai container benar-benar mati
-  while docker ps --format '{{.Names}}' | grep -q "infernet"; do
+  while docker ps --format '{{.Names}}' | grep -q "hello-world"; do
     echo "⏳ Still stopping hello-world container..."
     sleep 2
   done
