@@ -151,8 +151,8 @@ setup_node() {
   read -p "Enter snapshot_sync sync_period (default 30): " user_period
   snap_period=${user_period:-30}
 
-  # === Update config.json (deploy & hello-world/container) ===
-  for CFG_FILE in "deploy/config.json" "projects/hello-world/container/config.json"; do
+    # === Update config.json (deploy & hello-world/container) ===
+  for CFG_FILE in "$TARGET_DIR/deploy/config.json" "$TARGET_DIR/projects/hello-world/container/config.json"; do
     if [ -f "$CFG_FILE" ]; then
       jq --arg url "$rpc_url" \
          --arg pkey "$private_key" \
@@ -179,7 +179,13 @@ setup_node() {
   # Stop hello world
   echo "Shutting down hello world, please wait..."
   project=hello-world make stop-container
-  sleep 30
+  # Tunggu sampai container benar-benar mati
+  while docker ps --format '{{.Names}}' | grep -q "infernet"; do
+    echo "⏳ Still stopping hello-world container..."
+    sleep 2
+  done
+
+  echo "✅ Hello World container stopped completely."
 
   # === Update docker-compose.yaml image version ===
   COMPOSE_FILE="$TARGET_DIR/deploy/docker-compose.yaml"
