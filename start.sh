@@ -16,36 +16,36 @@ trap "echo -e '\nExiting...'; exit 0" SIGINT
 setup_node() {
   echo ">>> Setting up Ritual Node environment..."
 
-  # # Check and install Docker
-  # if ! command -v docker &> /dev/null; then
-  #   echo "Docker not found. Installing Docker..."
-  #   curl -fsSL https://get.docker.com -o get-docker.sh
-  #   sh get-docker.sh
-  #   rm -f get-docker.sh
-  #   echo "Docker installed successfully."
-  # else
-  #   echo "Docker is already installed."
-  # fi
+  # Check and install Docker
+  if ! command -v docker &> /dev/null; then
+    echo "Docker not found. Installing Docker..."
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sh get-docker.sh
+    rm -f get-docker.sh
+    echo "Docker installed successfully."
+  else
+    echo "Docker is already installed."
+  fi
 
-  # # Enable and start Docker service
-  # if systemctl list-unit-files | grep -q docker.service; then
-  #   echo "Enabling and starting Docker service..."
-  #   sudo systemctl enable --now docker
-  #   echo "Docker service is active."
-  # fi
+  # Enable and start Docker service
+  if systemctl list-unit-files | grep -q docker.service; then
+    echo "Enabling and starting Docker service..."
+    sudo systemctl enable --now docker
+    echo "Docker service is active."
+  fi
 
-  # # Check and install Docker Compose
-  # if ! docker compose version &> /dev/null; then
-  #   echo "Docker Compose not found. Installing Docker Compose..."
-  #   DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-  #   mkdir -p $DOCKER_CONFIG/cli-plugins
-  #   curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) \
-  #     -o $DOCKER_CONFIG/cli-plugins/docker-compose
-  #   chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-  #   echo "Docker Compose installed successfully."
-  # else
-  #   echo "Docker Compose is already installed."
-  # fi
+  # Check and install Docker Compose
+  if ! docker compose version &> /dev/null; then
+    echo "Docker Compose not found. Installing Docker Compose..."
+    DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+    mkdir -p $DOCKER_CONFIG/cli-plugins
+    curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) \
+      -o $DOCKER_CONFIG/cli-plugins/docker-compose
+    chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+    echo "Docker Compose installed successfully."
+  else
+    echo "Docker Compose is already installed."
+  fi
 
   # Decide target directory based on user
   if [ "$(id -u)" -eq 0 ]; then
