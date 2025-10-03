@@ -65,7 +65,7 @@ setup_node() {
 
   # === Deploy Hello World container in background using screen ===
   echo "Deploying hello-world container in background..."
-  docker pull ritualnetwork/infernet-node:latest
+  docker pull ritualnetwork/hello-world-infernet:latest 
   screen -dmS ritual-node bash -c "cd $TARGET_DIR && project=hello-world make deploy-container"
   echo "✅ Hello World container deployment started in screen session 'ritual-node'"
 
@@ -277,8 +277,8 @@ start_node() {
   fi
 
   cd "$TARGET_DIR" || { echo "Project folder not found!"; return; }
-  docker pull ritualnetwork/infernet-node:latest
-  
+  docker pull ritualnetwork/hello-world-infernet:latest 
+
   docker compose -f "$TARGET_DIR/deploy/docker-compose.yaml" up --build -d
   echo "✅ Ritual node started."
   read -p "Press Enter to return to menu..."
