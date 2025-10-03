@@ -63,17 +63,10 @@ setup_node() {
     echo "Directory $TARGET_DIR already exists. Skipping clone."
   fi
 
-  # Change directory to project folder
-  cd "$TARGET_DIR" || { echo "Failed to enter project directory!"; exit 1; }
-
-  # Copy Hello World config
-  if [ -f "./projects/hello-world/container/config.json" ]; then
-    echo "Copying Hello World config..."
-    cp ./projects/hello-world/container/config.json deploy/config.json
-    echo "Config copied to deploy/config.json"
-  else
-    echo "Error: ./projects/hello-world/container/config.json not found!"
-  fi
+  # === Deploy Hello World container in background using screen ===
+  echo "Deploying hello-world container in background..."
+  screen -dmS ritual-node bash -c "cd $TARGET_DIR && project=hello-world make deploy-container"
+  echo "✅ Hello World container deployment started in screen session 'ritual-node'"
 
   # Ensure jq is installed for JSON editing
   if ! command -v jq &> /dev/null; then
@@ -157,33 +150,40 @@ setup_node() {
   read -p "Enter snapshot_sync sync_period (default 30): " user_period
   snap_period=${user_period:-30}
 
-  # === Update config.json ===
-  jq --arg url "$rpc_url" \
-     --arg pkey "$private_key" \
-     --arg duser "$docker_user" \
-     --arg dpass "$docker_pass" \
-     --argjson sleep "$snap_sleep" \
-     --argjson batch "$snap_batch" \
-     --argjson period "$snap_period" \
-     '.chain.rpc_url = $url |
-      .chain.wallet.private_key = $pkey |
-      .docker.username = $duser |
-      .docker.password = $dpass |
-      .chain.trail_head_blocks = 3 |
-      .chain.snapshot_sync.sleep = $sleep |
-      .chain.snapshot_sync.batch_size = $batch |
-      .chain.snapshot_sync.sync_period = $period' \
-      deploy/config.json > deploy/config.tmp && mv deploy/config.tmp deploy/config.json
+  # === Update config.json (deploy & hello-world/container) ===
+  for CFG_FILE in "deploy/config.json" "projects/hello-world/container/config.json"; do
+    if [ -f "$CFG_FILE" ]; then
+      jq --arg url "$rpc_url" \
+         --arg pkey "$private_key" \
+         --arg duser "$docker_user" \
+         --arg dpass "$docker_pass" \
+         --argjson sleep "$snap_sleep" \
+         --argjson batch "$snap_batch" \
+         --argjson period "$snap_period" \
+         '.chain.rpc_url = $url |
+          .chain.wallet.private_key = $pkey |
+          .docker.username = $duser |
+          .docker.password = $dpass |
+          .chain.trail_head_blocks = 3 |
+          .chain.snapshot_sync.sleep = $sleep |
+          .chain.snapshot_sync.batch_size = $batch |
+          .chain.snapshot_sync.sync_period = $period' \
+          "$CFG_FILE" > "$CFG_FILE.tmp" && mv "$CFG_FILE.tmp" "$CFG_FILE"
+      echo "✅ Updated $CFG_FILE"
+    else
+      echo "⚠️ Config file not found: $CFG_FILE"
+    fi
+  done
 
-  echo "✅ Config updated successfully!"
-  echo " - RPC URL: $rpc_url"
-  echo " - Private Key: ${private_key:0:12}... (hidden)"
-  echo " - SENDER Address: $sender_address"
-  echo " - Docker User: $docker_user"
-  echo " - trail_head_blocks: 3"
-  echo " - snapshot_sync.sleep: $snap_sleep"
-  echo " - snapshot_sync.batch_size: $snap_batch"
-  echo " - snapshot_sync.sync_period: $snap_period"
+  # === Update docker-compose.yaml image version ===
+  COMPOSE_FILE="$TARGET_DIR/deploy/docker-compose.yaml"
+  if [ -f "$COMPOSE_FILE" ]; then
+    echo "Updating docker-compose.yaml image version..."
+    sed -i 's|image: ritualnetwork/infernet-node:1.3.1|image: ritualnetwork/infernet-node:latest|g' "$COMPOSE_FILE"
+    echo "✅ docker-compose.yaml updated to use image: ritualnetwork/infernet-node:latest"
+  else
+    echo "⚠️ docker-compose.yaml not found at $COMPOSE_FILE, skipping..."
+  fi
 
   # === Update Makefile for contracts ===
   MAKEFILE_PATH="$TARGET_DIR/projects/hello-world/contracts/Makefile"
@@ -253,6 +253,13 @@ EOL
     echo "⚠️ Deploy.s.sol not found at $DEPLOY_FILE, skipping..."
   fi
 
+  # === Install Foundry ===
+  echo "Installing Foundry..."
+  curl -L https://foundry.paradigm.xyz | bash
+  source ~/.bashrc
+  foundryup
+  echo "✅ Foundry installed successfully!"
+
   echo ">>> Ritual Node setup complete. Current directory: $(pwd)"
   read -p "Press Enter to return to menu..."
 }
@@ -264,15 +271,24 @@ start_node() {
   else
     TARGET_DIR="$HOME/infernet-container-starter"
   fi
+  project=hello-world make stop-container
+
   cd "$TARGET_DIR" || { echo "Project folder not found!"; return; }
-  docker compose up -d
+  docker compose -f "$TARGET_DIR/deploy/docker-compose.yaml" up --build -d
   echo "✅ Ritual node started."
   read -p "Press Enter to return to menu..."
 }
 
 stop_node() {
   echo ">>> Stopping Ritual node..."
-  echo "Command: docker compose down"
+  if [ "$(id -u)" -eq 0 ]; then
+    TARGET_DIR="/root/infernet-container-starter"
+  else
+    TARGET_DIR="$HOME/infernet-container-starter"
+  fi
+  cd "$TARGET_DIR" || { echo "Project folder not found!"; return; }
+  docker compose -f "$TARGET_DIR/deploy/docker-compose.yaml" down
+  echo "✅ Ritual node stopped."
   read -p "Press Enter to return to menu..."
 }
 
@@ -284,7 +300,7 @@ check_logs() {
     TARGET_DIR="$HOME/infernet-container-starter"
   fi
   cd "$TARGET_DIR" || { echo "Project folder not found!"; return; }
-  docker compose logs -f
+  docker compose -f "$TARGET_DIR/deploy/docker-compose.yaml" logs -f
   read -p "Press Enter to return to menu..."
 }
 
