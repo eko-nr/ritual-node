@@ -178,6 +178,7 @@ setup_node() {
 
   # Stop hello world
   project=hello-world make stop-container
+  sleep 30
 
   # === Update docker-compose.yaml image version ===
   COMPOSE_FILE="$TARGET_DIR/deploy/docker-compose.yaml"
