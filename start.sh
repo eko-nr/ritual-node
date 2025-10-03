@@ -65,6 +65,7 @@ setup_node() {
 
   # === Deploy Hello World container in background using screen ===
   echo "Deploying hello-world container in background..."
+  docker pull ritualnetwork/infernet-node:latest
   screen -dmS ritual-node bash -c "cd $TARGET_DIR && project=hello-world make deploy-container"
   echo "✅ Hello World container deployment started in screen session 'ritual-node'"
 
