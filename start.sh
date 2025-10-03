@@ -177,6 +177,7 @@ setup_node() {
   done
 
   # Stop hello world
+  cd $TARGET_DIR
   echo "Shutting down hello world, please wait..."
   project=hello-world make stop-container
   # Tunggu sampai container benar-benar mati
