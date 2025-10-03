@@ -176,18 +176,6 @@ setup_node() {
     fi
   done
 
-  # Stop hello world
-  cd $TARGET_DIR
-  echo "Shutting down hello world, please wait..."
-  project=hello-world make stop-container
-  # Tunggu sampai container benar-benar mati
-  while docker ps --format '{{.Names}}' | grep -q "hello-world"; do
-    echo "⏳ Still stopping hello-world container..."
-    sleep 2
-  done
-
-  echo "✅ Hello World container stopped completely."
-
   # === Update docker-compose.yaml image version ===
   COMPOSE_FILE="$TARGET_DIR/deploy/docker-compose.yaml"
   if [ -f "$COMPOSE_FILE" ]; then
@@ -266,6 +254,18 @@ EOL
     echo "⚠️ Deploy.s.sol not found at $DEPLOY_FILE, skipping..."
   fi
 
+  # Stop hello world
+  cd $TARGET_DIR
+  echo "Shutting down hello world, please wait..."
+  project=hello-world make stop-container
+  # Tunggu sampai container benar-benar mati
+  while docker ps --format '{{.Names}}' | grep -q "hello-world"; do
+    echo "⏳ Still stopping hello-world container..."
+    sleep 2
+  done
+
+  echo "✅ Hello World container stopped completely."
+  
   # === Install Foundry ===
   echo "Installing Foundry..."
   curl -L https://foundry.paradigm.xyz | bash
