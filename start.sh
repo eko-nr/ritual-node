@@ -314,7 +314,7 @@ check_logs() {
     TARGET_DIR="$HOME/infernet-container-starter"
   fi
   cd "$TARGET_DIR" || { echo "Project folder not found!"; return; }
-  docker compose -f "$TARGET_DIR/deploy/docker-compose.yaml" logs -f
+  docker compose -f "$TARGET_DIR/deploy/docker-compose.yaml" logs -fn 200
   read -p "Press Enter to return to menu..."
 }
 
