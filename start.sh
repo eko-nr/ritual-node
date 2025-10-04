@@ -231,11 +231,11 @@ import {SaysGM} from "../src/SaysGM.sol";
 contract Deploy is Script {
     function run() public {
         // Setup wallet
-        // uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY"); // not used
-        vm.startBroadcast();
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
 
         // Log address
-        address deployerAddress = $sender_address;
+        address deployerAddress = vm.addr(deployerPrivateKey);
         console2.log("Loaded deployer: ", deployerAddress);
 
         address registry = $registry_address;
