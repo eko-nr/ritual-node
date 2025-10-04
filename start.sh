@@ -151,11 +151,17 @@ setup_node() {
   read -p "Enter snapshot_sync sync_period (default 30): " user_period
   snap_period=${user_period:-30}
 
-    # === Update config.json (deploy & hello-world/container) ===
+  # === Prompt for Registry Address ===
+  default_registry="0x3B1554f346DFe5c482Bb4BA31b880c1C18412170"
+  read -p "Enter Registry Address [default: $default_registry]: " user_registry
+  registry_address=${user_registry:-$default_registry}
+
+  # === Update config.json (deploy & hello-world/container) ===
   for CFG_FILE in "$TARGET_DIR/deploy/config.json" "$TARGET_DIR/projects/hello-world/container/config.json"; do
     if [ -f "$CFG_FILE" ]; then
       jq --arg url "$rpc_url" \
          --arg pkey "$private_key" \
+         --arg reg_addr "$registry_address" \
          --arg duser "$docker_user" \
          --arg dpass "$docker_pass" \
          --argjson sleep "$snap_sleep" \
@@ -163,6 +169,7 @@ setup_node() {
          --argjson period "$snap_period" \
          '.chain.rpc_url = $url |
           .chain.wallet.private_key = $pkey |
+          .chain.registry_address = $reg_addr |
           .docker.username = $duser |
           .docker.password = $dpass |
           .chain.trail_head_blocks = 3 |
@@ -205,17 +212,12 @@ deploy:
 
 # calling sayGM()
 call-contract:
-	@PRIVATE_KEY=\$(PRIVATE_KEY) forge script script/CallContract.s.sol:CallContract --broadcast --rpc-url \$(RPC_URL)
+	@PRIVATE_KEY=\$(PRIVATE_KEY) forge script script/CallContract.s.sol:CallContract --broadcast --rpc-url \$(RPC_URL) --sender \$(SENDER) --private-key \$(PRIVATE_KEY)
 EOL
     echo "✅ Makefile updated successfully!"
   else
     echo "⚠️ Makefile not found at $MAKEFILE_PATH, skipping..."
   fi
-
-  # === Prompt for Registry Address ===
-  default_registry="0x3B1554f346DFe5c482Bb4BA31b880c1C18412170"
-  read -p "Enter Registry Address [default: $default_registry]: " user_registry
-  registry_address=${user_registry:-$default_registry}
 
   # === Update Deploy.s.sol ===
   DEPLOY_FILE="$TARGET_DIR/projects/hello-world/contracts/script/Deploy.s.sol"
@@ -231,11 +233,12 @@ import {SaysGM} from "../src/SaysGM.sol";
 contract Deploy is Script {
     function run() public {
         // Setup wallet
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+        // uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        
+        vm.startBroadcast();
 
         // Log address
-        address deployerAddress = vm.addr(deployerPrivateKey);
+        address deployerAddress = $sender_address;
         console2.log("Loaded deployer: ", deployerAddress);
 
         address registry = $registry_address;
@@ -258,12 +261,10 @@ EOL
   cd $TARGET_DIR
   echo "Shutting down hello world, please wait..."
   project=hello-world make stop-container
-  # Tunggu sampai container benar-benar mati
   while docker ps --format '{{.Names}}' | grep -q "hello-world"; do
     echo "⏳ Still stopping hello-world container..."
     sleep 2
   done
-
   echo "✅ Hello World container stopped completely."
   
   # === Install Foundry ===
@@ -287,7 +288,6 @@ start_node() {
 
   cd "$TARGET_DIR" || { echo "Project folder not found!"; return; }
   docker pull ritualnetwork/hello-world-infernet:latest 
-
   docker compose -f "$TARGET_DIR/deploy/docker-compose.yaml" up --build -d
   echo "✅ Ritual node started."
   read -p "Press Enter to return to menu..."
@@ -325,8 +325,20 @@ deploy_hello_world_contract() {
   else
     TARGET_DIR="$HOME/infernet-container-starter"
   fi
+
+  # Step install dependencies
   cd "$TARGET_DIR/projects/hello-world/contracts" || { echo "Contracts folder not found!"; return; }
-  make deploy
+  forge install foundry-rs/forge-std
+  rm -f /usr/bin/forge
+  export PATH="/root/.foundry/bin:$PATH"
+  forge install ritual-net/infernet-sdk
+
+  # Back to root project and deploy
+  cd "$TARGET_DIR" || { echo "Project folder not found!"; return; }
+  forge clean
+  project=hello-world make deploy-contracts
+
+  echo "✅ Hello World contract deployed."
   read -p "Press Enter to return to menu..."
 }
 
@@ -337,8 +349,47 @@ call_hello_world_contract() {
   else
     TARGET_DIR="$HOME/infernet-container-starter"
   fi
+
+  # Prompt contract address
+  default_contract_addr="0x13D69Cf7d6CE4218F646B759Dcf334D82c023d8e"
+  read -p "Enter Hello World Contract address [default: $default_contract_addr]: " user_contract_addr
+  contract_addr=${user_contract_addr:-$default_contract_addr}
+
+  # Rewrite CallContract.s.sol
+  CALL_FILE="$TARGET_DIR/projects/hello-world/contracts/script/CallContract.s.sol"
+  if [ -f "$CALL_FILE" ]; then
+    echo "Updating CallContract.s.sol with contract address..."
+    cat > "$CALL_FILE" <<EOL
+// SPDX-License-Identifier: BSD-3-Clause-Clear
+pragma solidity ^0.8.0;
+
+import {Script, console2} from "forge-std/Script.sol";
+import {SaysGM} from "../src/SaysGM.sol";
+
+contract CallContract is Script {
+    function run() public {
+        // Setup wallet
+        // uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast();
+
+        SaysGM saysGm = SaysGM($contract_addr);
+
+        saysGm.sayGM();
+
+        vm.stopBroadcast();
+    }
+}
+EOL
+    echo "✅ CallContract.s.sol updated successfully!"
+  else
+    echo "⚠️ CallContract.s.sol not found at $CALL_FILE, skipping..."
+  fi
+
+  # Run make call-contract
   cd "$TARGET_DIR/projects/hello-world/contracts" || { echo "Contracts folder not found!"; return; }
-  make call-contract
+  project=hello-world make call-contract
+
+  echo "✅ Hello World contract called."
   read -p "Press Enter to return to menu..."
 }
 
