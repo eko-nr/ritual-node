@@ -351,7 +351,7 @@ call_hello_world_contract() {
   fi
 
   # Prompt contract address
-  default_contract_addr="0x13D69Cf7d6CE4218F646B759Dcf334D82c023d8e"
+  default_contract_addr="0x0729F4A4601864b8FEc739dF5142d19D7586941e"
   read -p "Enter Hello World Contract address [default: $default_contract_addr]: " user_contract_addr
   contract_addr=${user_contract_addr:-$default_contract_addr}
 
