@@ -7,7 +7,7 @@ This script provides an automated setup and management tool for running a Ritual
 - **CPU**: 4 cores (minimum)
 - **RAM**: 4 GB (minimum)
 - **Storage**: 700 GB (estimated, may require more)
-- **OS**: Linux-based system with systemd support
+- **OS**: Ubuntu 22.04 or higher (Docker compatible)
 - **Network**: Stable internet connection
 
 ## Prerequisites
